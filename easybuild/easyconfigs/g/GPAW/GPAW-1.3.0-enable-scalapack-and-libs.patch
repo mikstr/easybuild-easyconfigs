@@ -1,12 +1,11 @@
-diff -ru gpaw-1.3.0-org/customize.py gpaw-1.3.0/customize.py
---- gpaw-1.3.0-org/customize.py	2018-01-05 13:12:59.467477601 +0100
-+++ gpaw-1.3.0/customize.py	2018-01-05 14:46:18.652871809 +0100
-@@ -27,23 +27,49 @@
+--- ../gpaw-1.3.0-82cebebc037510d876f90d9f8d533fd021f751f5/customize.py	2017-10-02 12:41:22.000000000 +0200
++++ customize.py	2018-01-09 09:18:13.745323945 +0100
+@@ -27,23 +27,51 @@
  
      libraries += ['somelib', 'otherlib']
  """
--
 +import os
+ 
  # compiler = 'gcc'
  # mpicompiler = 'mpicc'  # use None if you don't want to build a gpaw-python
  # mpilinker = 'mpicc'
@@ -14,26 +13,27 @@ diff -ru gpaw-1.3.0-org/customize.py gpaw-1.3.0/customize.py
  # scalapack = False
 +scalapack = True
 +
-+
-+def eblibs_to_gpawlibs(eblib):
-+    return [lib[2:] for lib in os.getenv(eblib).split()]
-+
++# EasyBuild customization: Get the paths of the various
++# libraries from the EBROOT environment variables set when
++# the EasyBuild modules containing the libraries are loaded.
 +
 +path = os.environ.get('EBROOTPYTHON')
-+extra_link_args += [' -Wl,-rpath=%s/lib' % path]
++extra_link_args += ['-Wl,-rpath=%s/lib' % path]
 +
 +path = os.environ.get('EBROOTLIBREADLINE')
-+extra_link_args += [' -Wl,-rpath=%s/lib' % path]
++extra_link_args += ['-Wl,-rpath=%s/lib' % path]
 +include_dirs += [os.path.join(path, 'include')]
 +library_dirs += [os.path.join(path, 'lib')]
 +libraries += ['readline']
 +
 +# Use BLAS and LAPACK libraries from EasyBuild
-+path = os.getenv('BLAS_LAPACK_LIB_DIR')
-+extra_link_args += ['-Wl,-rpath=%s' % path]
-+library_dirs += [path]
-+libraries += eblibs_to_gpawlibs('LIBLAPACK')
-+include_dirs += [os.getenv('LAPACK_INC_DIR')]
++path = os.getenv('EBROOTOPENBLAS')
++extra_link_args += ['-Wl,-rpath=%s/lib' % path]
++library_dirs += [os.path.join(path, 'lib')]
++libraries.remove('blas')
++libraries.remove('lapack')
++libraries += ['openblas', 'gfortran']
++include_dirs += [os.path.join(path, 'include')]
 +
  
  # Use ScaLAPACK:
@@ -43,11 +43,11 @@ diff -ru gpaw-1.3.0-org/customize.py gpaw-1.3.0/customize.py
 -    libraries += ['scalapack-openmpi',
 -                  'blacsCinit-openmpi',
 -                  'blacs-openmpi']
-+    path = os.getenv('SCALAPACK_LIB_DIR')
++    path = os.getenv('EBROOTSCALAPACK')
 +    extra_link_args += ['-Wl,-rpath=%s' % path]
-+    mpi_library_dirs += [path]
-+    mpi_libraries += eblibs_to_gpawlibs('LIBSCALAPACK_ONLY')
-+    include_dirs += [os.getenv('SCALAPACK_INC_DIR')]
++    mpi_library_dirs += [os.path.join(path, 'lib')]
++    mpi_libraries += ['scalapack']
++    include_dirs += [os.path.join(path, 'include')]
      define_macros += [('GPAW_NO_UNDERSCORE_CBLACS', '1')]
      define_macros += [('GPAW_NO_UNDERSCORE_CSCALAPACK', '1')]
  
@@ -55,7 +55,7 @@ diff -ru gpaw-1.3.0-org/customize.py gpaw-1.3.0/customize.py
  # LibXC:
  # In order to link libxc installed in a non-standard location
  # (e.g.: configure --prefix=/home/user/libxc-2.0.1-1), use:
-@@ -55,10 +81,13 @@
+@@ -55,10 +83,13 @@
      if 'xc' in libraries:
          libraries.remove('xc')
  
